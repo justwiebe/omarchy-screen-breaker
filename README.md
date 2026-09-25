@@ -5,7 +5,9 @@ monitor, turns it into glass, and hands you seven ways to destroy it. A remake
 of the old [Screen Breaker XP](https://yardenz.itch.io/screen-breaker-xp),
 built as a native Omarchy shell overlay.
 
-![Screen Breaker preview](preview.png)
+[![Screen Breaker in action](media/demo.webp)](media/demo.mp4)
+
+[Watch the full 37-second demo](media/demo.mp4)
 
 Nothing on your computer is harmed: you're breaking a picture of it. Press
 `Esc` and you're back at work.
