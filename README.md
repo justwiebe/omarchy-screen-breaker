@@ -7,7 +7,7 @@ built as a native Omarchy shell overlay.
 
 [![Screen Breaker in action](media/demo.webp)](media/demo.mp4)
 
-[Watch the full 37-second demo](media/demo.mp4)
+[Watch the full 26-second demo](media/demo.mp4)
 
 Nothing on your computer is harmed: you're breaking a picture of it. Press
 `Esc` and you're back at work.
