@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.justwiebe.screen-breaker",
+  "name": "Screen Breaker",
+  "version": "1.0.0",
+  "author": "Justin Wiebe (justwiebe)",
+  "description": "Smash your desktop with a hammer, guns, fire, lasers, bombs, and sudo rm -rf",
+  "kinds": ["overlay"],
+  "entryPoints": { "overlay": "ScreenBreaker.qml" }
+}
