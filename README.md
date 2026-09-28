@@ -22,7 +22,7 @@ Nothing on your computer is harmed: you're breaking a picture of it. Press
 | `4` | Flamethrower | Hold to scorch the screen. Fires keep burning after you let go. |
 | `5` | Laser | Hold and drag to cut glowing lines. |
 | `6` | Bomb | Click to drop one, then stand back. |
-| `7` | `sudo rm -rf` | Hold to melt the pixels. |
+| `7` | `rm -rf` | Hold to melt the pixels. |
 
 ## Controls
 
@@ -89,7 +89,7 @@ If you added a keybinding or menu entry, delete those lines too.
   canvas tiles, so a hit only repaints the tiles it touches.
 - `Shard.qml` is a falling piece of glass: a polygon textured with the part of
   the screenshot it came from.
-- `Drip.qml` is one melting column for `sudo rm -rf`.
+- `Drip.qml` is one melting column for `rm -rf`.
 - Fire, sparks, smoke, and glass dust are Qt Quick particles.
 - `Sound.qml` plays effects with `pw-play`, since Qt Multimedia isn't part of a
   stock Omarchy install.

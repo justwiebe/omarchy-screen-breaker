@@ -44,7 +44,7 @@ Item {
     { id: "flame", name: "Flamethrower", desc: "Hold to burn — fires keep burning" },
     { id: "laser", name: "Laser", desc: "Hold and drag to cut" },
     { id: "bomb", name: "Bomb", desc: "Click to drop — stand back" },
-    { id: "melt", name: "sudo rm -rf", desc: "Hold to melt the pixels" }
+    { id: "melt", name: "rm -rf", desc: "Hold to melt the pixels" }
   ]
   property int toolIndex: 0
   readonly property var tool: tools[toolIndex]
