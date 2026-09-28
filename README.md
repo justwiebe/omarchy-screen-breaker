@@ -94,8 +94,11 @@ If you added a keybinding or menu entry, delete those lines too.
 - `Sound.qml` plays effects with `pw-play`, since Qt Multimedia isn't part of a
   stock Omarchy install.
 
-The screenshot is written to `$XDG_RUNTIME_DIR/screen-breaker.png` and
-overwritten on every run. Nothing leaves your machine.
+Each screenshot goes into a new owner-only directory under
+`$XDG_RUNTIME_DIR` (created with `mktemp -d`, file mode 600) and is deleted
+when you quit. If `$XDG_RUNTIME_DIR` is missing, not yours, or not mode 700,
+Screen Breaker refuses to take the screenshot rather than fall back to a
+shared location. Nothing leaves your machine.
 
 ## Development
 

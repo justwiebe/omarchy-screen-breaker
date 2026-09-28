@@ -21,12 +21,39 @@ Item {
 
   readonly property string pluginId: (manifest && manifest.id) || "io.github.justwiebe.screen-breaker"
   readonly property string assetDir: Qt.resolvedUrl("assets").toString().replace(/^file:\/\//, "")
-  readonly property string shotPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/screen-breaker.png"
-
   property bool capturing: false
   property string monitorName: ""
-  property int shotSerial: 0
+  // Private per-capture directory under $XDG_RUNTIME_DIR, removed on close.
+  property string shotDir: ""
   property string shotUrl: ""
+
+  // Takes the screenshot into a freshly created, owner-only directory and
+  // prints that directory. Refuses to run unless $XDG_RUNTIME_DIR is a real
+  // directory owned by us with mode 700, so the image never lands anywhere
+  // another user could read it or plant a symlink. $1 is the monitor name.
+  readonly property string captureScript: '
+    set -eu
+    umask 077
+    runtime=${XDG_RUNTIME_DIR:-}
+    if [[ -z $runtime || ! -d $runtime || -L $runtime || ! -O $runtime || $(stat -c %a -- "$runtime") != 700 ]]; then
+      echo "XDG_RUNTIME_DIR is missing or not private" >&2
+      exit 3
+    fi
+    dir=$(mktemp -d -- "$runtime/screen-breaker.XXXXXXXXXX")
+    if [[ -n ${1:-} ]]; then output=(-o "$1"); else output=(); fi
+    if ! grim "${output[@]}" "$dir/shot.png"; then
+      rm -rf -- "$dir"
+      exit 4
+    fi
+    printf "%s\\n" "$dir"
+  '
+
+  // Only ever deletes a directory this plugin created.
+  readonly property string cleanupScript: '
+    case $1 in
+      "$XDG_RUNTIME_DIR"/screen-breaker.*) rm -f -- "$1/shot.png"; rmdir -- "$1" ;;
+    esac
+  '
 
   // Theme
   readonly property string accentCss: String(Color.accent)
@@ -100,6 +127,15 @@ Item {
     captureDelay.stop()
     sound.stopAll()
     resetDamage()
+    removeShot()
+  }
+
+  function removeShot() {
+    if (!shotDir) return
+    var dir = shotDir
+    shotUrl = ""
+    shotDir = ""
+    Quickshell.execDetached(["bash", "-c", cleanupScript, "screen-breaker-cleanup", dir])
   }
 
   function dismiss() {
@@ -142,23 +178,33 @@ Item {
     id: captureDelay
     interval: 250
     onTriggered: {
-      grim.command = root.monitorName ? ["grim", "-o", root.monitorName, root.shotPath] : ["grim", root.shotPath]
-      grim.running = true
+      root.removeShot()
+      capture.command = ["bash", "-c", root.captureScript, "screen-breaker-capture", root.monitorName]
+      capture.running = true
     }
   }
 
   Process {
-    id: grim
+    id: capture
+    stdout: StdioCollector { id: captureOut; waitForEnd: true }
+    stderr: StdioCollector { id: captureErr; waitForEnd: true }
     onExited: function(exitCode) {
-      if (!root.capturing) return
-      if (exitCode !== 0) {
+      var dir = String(captureOut.text || "").trim()
+      var valid = exitCode === 0 && /\/screen-breaker\.[A-Za-z0-9]{10}$/.test(dir)
+      if (!root.capturing) {
+        // Closed while capturing: throw the screenshot away.
+        if (valid) Quickshell.execDetached(["bash", "-c", root.cleanupScript, "screen-breaker-cleanup", dir])
+        return
+      }
+      if (!valid) {
         root.capturing = false
-        Quickshell.execDetached(["notify-send", "-a", "Screen Breaker", "Couldn't take a screenshot", "grim exited with " + exitCode])
+        var reason = String(captureErr.text || "").trim() || ("capture exited with " + exitCode)
+        Quickshell.execDetached(["notify-send", "-a", "Screen Breaker", "Couldn't take a screenshot", reason])
         root.dismiss()
         return
       }
-      root.shotSerial++
-      root.shotUrl = "file://" + root.shotPath + "?" + root.shotSerial
+      root.shotDir = dir
+      root.shotUrl = "file://" + dir + "/shot.png"
     }
   }
 
