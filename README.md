@@ -98,7 +98,10 @@ Each screenshot goes into a new owner-only directory under
 `$XDG_RUNTIME_DIR` (created with `mktemp -d`, file mode 600) and is deleted
 when you quit. If `$XDG_RUNTIME_DIR` is missing, not yours, or not mode 700,
 Screen Breaker refuses to take the screenshot rather than fall back to a
-shared location. Nothing leaves your machine.
+shared location. Saving the wreckage never replaces an existing file or
+follows a symlink: each save gets a new name (`screen-breaker-<time>.png`,
+then `-1`, `-2`, ...), claimed atomically with a hard link. Nothing leaves your
+machine.
 
 ## Development
 

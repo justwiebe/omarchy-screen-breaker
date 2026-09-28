@@ -51,8 +51,38 @@ Item {
   // Only ever deletes a directory this plugin created.
   readonly property string cleanupScript: '
     case $1 in
-      "$XDG_RUNTIME_DIR"/screen-breaker.*) rm -f -- "$1/shot.png"; rmdir -- "$1" ;;
+      "$XDG_RUNTIME_DIR"/screen-breaker.*) rm -f -- "$1/shot.png" "$1/wreckage.png"; rmdir -- "$1" ;;
     esac
+  '
+
+  // Publishes a saved image without ever replacing or following an existing
+  // path. The image is staged in the private capture directory, copied into
+  // the destination under an exclusively created random name (mktemp), then
+  // hard-linked to the final name: link(2) fails if anything, including a
+  // symlink, already exists there, so we move on to -1, -2, ... Prints the
+  // final path. $1 is the staged file, $2 the base name, the rest are
+  // candidate directories in order of preference.
+  readonly property string saveScript: '
+    set -eu
+    umask 077
+    staged=$1 base=$2
+    shift 2
+    for dir in "$@"; do
+      [[ -n $dir && -d $dir && -w $dir ]] || continue
+      tmp=$(mktemp -- "$dir/.screen-breaker.XXXXXXXXXX") || continue
+      if ! cat -- "$staged" > "$tmp"; then rm -f -- "$tmp"; continue; fi
+      for suffix in "" $(seq -f "-%g" 1 99); do
+        dest="$dir/$base$suffix.png"
+        if ln -T -- "$tmp" "$dest" 2>/dev/null; then
+          rm -f -- "$tmp"
+          printf "%s\\n" "$dest"
+          exit 0
+        fi
+      done
+      rm -f -- "$tmp"
+    done
+    echo "no writable destination" >&2
+    exit 4
   '
 
   // Theme
@@ -477,22 +507,36 @@ Item {
   }
 
   function save() {
-    var dir = Quickshell.env("OMARCHY_SCREENSHOT_DIR") || Quickshell.env("XDG_PICTURES_DIR") || (Quickshell.env("HOME") + "/Pictures")
-    var name = "/screen-breaker-" + Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss") + ".png"
+    if (!shotDir || saver.running) return
+    var dir = shotDir
+    var base = "screen-breaker-" + Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")
+    var home = Quickshell.env("HOME")
     // grabToImage already renders at the display's device pixel ratio.
     scene.grabToImage(function(result) {
-      // Fall back to $HOME when the pictures directory doesn't exist.
-      var path = dir + name
-      if (!result.saveToFile(path)) {
-        path = Quickshell.env("HOME") + name
-        if (!result.saveToFile(path)) {
-          toast("Couldn't save the wreckage")
-          return
-        }
+      // Stage in our private capture directory; saveScript publishes it.
+      var staged = dir + "/wreckage.png"
+      if (dir !== root.shotDir || !result.saveToFile(staged)) {
+        toast("Couldn't save the wreckage")
+        return
       }
-      toast("Saved to " + path.replace(Quickshell.env("HOME"), "~"))
-      Quickshell.execDetached(["notify-send", "-a", "Screen Breaker", "Wreckage saved", path])
+      saver.command = ["bash", "-c", root.saveScript, "screen-breaker-save", staged, base,
+        Quickshell.env("OMARCHY_SCREENSHOT_DIR"), Quickshell.env("XDG_PICTURES_DIR"), home + "/Pictures", home]
+      saver.running = true
     })
+  }
+
+  Process {
+    id: saver
+    stdout: StdioCollector { id: saverOut; waitForEnd: true }
+    onExited: function(exitCode) {
+      var path = String(saverOut.text || "").trim()
+      if (exitCode !== 0 || !path) {
+        root.toast("Couldn't save the wreckage")
+        return
+      }
+      root.toast("Saved to " + path.replace(Quickshell.env("HOME"), "~"))
+      Quickshell.execDetached(["notify-send", "-a", "Screen Breaker", "Wreckage saved", path])
+    }
   }
 
   function toast(message) {
